@@ -362,7 +362,7 @@ pub mod pdu {
             };
             n = n.to_be();
             let count = unsafe {
-                let mut wbuf = self.available();
+                let wbuf = self.available();
                 let mut src_ptr = &n as *const i64 as *const u8;
                 let mut dst_ptr = wbuf.as_mut_ptr()
                     .offset((wbuf.len() - mem::size_of::<i64>()) as isize);
@@ -1059,6 +1059,42 @@ impl<'a> fmt::Debug for Value<'a> {
     }
 }
 
+impl<'a> fmt::Display for Value<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        use Value::*;
+        match *self {
+            Boolean(v)                   => write!(f, "BOOLEAN: {}", v),
+            Integer(n)                   => write!(f, "INTEGER: {}", n),
+            OctetString(slice)           => write!(f, "OCTET STRING: {}", String::from_utf8_lossy(slice)),
+            ObjectIdentifier(ref obj_id) => write!(f, "OBJECT IDENTIFIER: {}", obj_id),
+            Null                         => write!(f, "NULL"),
+            Sequence(ref val)            => write!(f, "SEQUENCE: {:#?}", val),
+            Set(ref val)                 => write!(f, "SET: {:?}", val),
+            Constructed(ident, ref val)  => write!(f, "CONSTRUCTED-{}: {:#?}", ident, val),
+
+            IpAddress(val)               => write!(f, "IP ADDRESS: {}.{}.{}.{}", val[0], val[1], val[2], val[3]),
+            Counter32(val)               => write!(f, "COUNTER32: {}", val),
+            Unsigned32(val)              => write!(f, "UNSIGNED32: {}", val),
+            Timeticks(val)               => write!(f, "TIMETICKS: {}", val),
+            Opaque(val)                  => write!(f, "OPAQUE: {:?}", val),
+            Counter64(val)               => write!(f, "COUNTER64: {}", val),
+
+            EndOfMibView                 => write!(f, "END OF MIB VIEW"),
+            NoSuchObject                 => write!(f, "NO SUCH OBJECT"),
+            NoSuchInstance               => write!(f, "NO SUCH INSTANCE"),
+
+            SnmpGetRequest(ref val)      => write!(f, "SNMP GET REQUEST: {:#?}", val),
+            SnmpGetNextRequest(ref val)  => write!(f, "SNMP GET NEXT REQUEST: {:#?}", val),
+            SnmpGetBulkRequest(ref val)  => write!(f, "SNMP GET BULK REQUEST: {:#?}", val),
+            SnmpResponse(ref val)        => write!(f, "SNMP RESPONSE: {:#?}", val),
+            SnmpSetRequest(ref val)      => write!(f, "SNMP SET REQUEST: {:#?}", val),
+            SnmpInformRequest(ref val)   => write!(f, "SNMP INFORM REQUEST: {:#?}", val),
+            SnmpTrap(ref val)            => write!(f, "SNMP TRAP: {:#?}", val),
+            SnmpReport(ref val)          => write!(f, "SNMP REPORT: {:#?}", val),
+        }
+    }
+}
+
 impl<'a> Iterator for AsnReader<'a> {
     type Item = Value<'a>;
 
@@ -1106,6 +1142,7 @@ pub struct SyncSession {
     send_pdu: pdu::Buf,
     recv_buf: [u8; BUFFER_SIZE],
 }
+
 
 impl SyncSession {
     pub fn new<SA>(destination: SA, community: &[u8], timeout: Option<Duration>, starting_req_id: i32) -> io::Result<Self>
@@ -1338,6 +1375,8 @@ impl<'a> Varbinds<'a> {
         }
     }
 }
+
+
 
 impl<'a> Iterator for Varbinds<'a> {
     type Item = (ObjectIdentifier<'a>, Value<'a>);
